@@ -1,0 +1,276 @@
+---
+title: "08_prelim_analysis"
+author: "Megan Shanahan <ms3283@cinj.rutgers.edu>"
+date: "`r format(Sys.time(), '%a %b %d, %Y %X')`"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+    html_preview: true
+    pandoc_args: ["--to=gfm"]
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: cosmo
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load packages, include=FALSE}
+# load packages 
+library(utils)
+library(tidyverse)
+library(dplyr)
+library(labelled)
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(knitr)
+library(rifttable)
+library(khsverse)
+library(gt)
+library(cowplot)
+library(viridis)
+library(scales)
+library(readxl)
+library(labelled)
+```
+
+```{r loading data}
+load("~/R/registry/df_long_final.Rda")
+length(unique(df_long_final$patient_study_id))
+```
+
+# Range of quintiles for PFAS
+```{r quintiles}
+df_long_final %>%
+  group_by(pfoa_quin) %>%
+  summarise(min = min(pfoa, na.rm = TRUE),
+            max = max(pfoa, na.rm = TRUE))
+
+df_long_final %>%
+  group_by(pfos_quin) %>%
+  summarise(min = min(pfos, na.rm = TRUE),
+            max = max(pfos, na.rm = TRUE))
+
+df_long_final %>%
+  group_by(pfna_quin) %>%
+  summarise(min = min(pfna, na.rm = TRUE),
+            max = max(pfna, na.rm = TRUE))
+```
+
+```{r}
+#pfna tertiles
+df_long_final <- df_long_final |>
+  mutate(pfna_tert = ntile(pfna, 3),
+         pfna_bin = ntile(pfna, 2))
+
+df_long_final %>%
+  group_by(pfna_tert) %>%
+  summarise(min = min(pfna, na.rm = TRUE),
+            max = max(pfna, na.rm = TRUE))
+
+df_long_final %>%
+  group_by(pfna_bin) %>%
+  summarise(min = min(pfna, na.rm = TRUE),
+            max = max(pfna, na.rm = TRUE))
+
+```
+
+# Creating new categories for PFNA
+```{r}
+df_long_final <- df_long_final |>
+  mutate(pfna_cat = factor(case_when(pfna < 2 ~ 1,
+                                     pfna >=2 & pfna < 3.8 ~ 2, 
+                                     pfna >= 3.8 ~ 3)) )
+
+df_long_final %>%
+  group_by(pfna_cat) %>%
+  summarise(min = min(pfna, na.rm = TRUE),
+            max = max(pfna, na.rm = TRUE))
+```
+
+
+
+
+```{r setting variable labels and creating combined variables, include=FALSE}
+df_long_final <- df_long_final |>
+  mutate(treat_surg_rad = factor(case_when(txsurg.f == "Yes"  | txrad.f == "Yes" ~ "Surgery or radiation", 
+                                           TRUE ~ "No surgery or radiation"))) |>
+  set_variable_labels(age_cat.f = "Age at diagnosis",
+                      dxage = "Age at diagnosis",
+                      dxyr_cat.f = "Year of diagnosis",
+                      afr_amer.f = "Race",
+                      hisp.f = "Hispanic",
+                      nhrace = "Race/Ethnicity",
+                      dxyr_group = "Diagnosis Year",
+                      married.f = "Marital Status",
+                      insur.f = "Insurance",
+                      gleason.f = " Gleason (glscss6)",
+                      grade_new.f = "Gleason (grade_new)",
+                      grade_combo.f = "Gleason (combined)",
+                      stage.f = "Stage",
+                      mets = "Metastasis at diagnosis",
+                      txsurg.f = "Surgery",
+                      txhorm.f = "Hormone treatment",
+                      txrad.f = "Radiation",
+                      txchemo.f = "Chemotherapy",
+                      psa.f = "PSA Category",
+                      nses_quin = "Neighborhood SES (Quintile)",
+                      psa_perc = "County-level PSA",
+                      no2_new = "NO2",
+                      pm25_new = "PM2.5",
+                      ndvi27_final = "NDVI27",
+                      pfoa_quin = "Quintiles of PFOA",
+                      pfos_quin = "Quintiles of PFOS",
+                      pfna_quin = "Quintiles of PFNA")
+
+```
+
+# Table 1s
+
+```{r table 1s filter, include=FALSE}
+# filter to just first row (at diagnosis)
+df_table1_diagnosis <- df_long_final |>
+  filter(
+    overlap_start <= newdxdt,
+    newdxdt <= overlap_end
+  ) %>%
+  distinct(patient_study_id, .keep_all = TRUE)
+```
+
+```{r}
+# recoding unknown/missing as their category
+df_table1_diagnosis <- df_table1_diagnosis |>
+  mutate(insur.f = factor(case_when(is.na(insur.f) ~ "Unknown",
+                                    TRUE ~ insur.f),
+                          levels = c("Uninsured", "Private", "Medicaid", "Medicare", "Other government", "Unknown")),
+         grade_combo.f = factor(case_when(is.na(grade_combo.f) ~ "Unknown",
+                                      TRUE ~ grade_combo.f),
+                            levels = c("<7", "7+", "Unknown")),
+         stage.f = factor(case_when(is.na(stage.f) ~ "Unknown",
+                                    TRUE ~ stage.f),
+                          levels = c("Localized", "Regional", "Distant", "Unknown")),
+         mets = factor(case_when(is.na(mets) ~ "Unknown",
+                                 mets==0 ~ "No",
+                                 mets==1 ~ "Yes" ),
+                       levels = c("No", "Yes", "Unknown")),
+         txsurg.f = factor(case_when(is.na(txsurg.f) ~ "Unknown",
+                                     TRUE ~ txsurg.f),
+                           levels = c ("No", "Yes", "Unknown")),
+         txhorm.f = factor(case_when(is.na(txhorm.f) ~ "Unknown",
+                                     TRUE ~ txhorm.f),
+                           levels = c ("No", "Yes", "Unknown")),
+         txrad.f = factor(case_when(is.na(txrad.f) ~ "Unknown",
+                                     TRUE ~ txrad.f),
+                           levels = c ("No", "Yes", "Unknown")),
+         psa.f = factor(case_when(is.na(psa.f) ~ "Unknown",
+                                     TRUE ~ psa.f),
+                           levels = c ("<10", "10-20", "20+", "Unknown")))
+
+```
+
+
+
+
+## Median (IQR) of PFAS at diagnosis
+```{r PFAS}
+table1_PFAS <- df_table1_diagnosis |>
+  table1_design(pfoa, pfos, pfna)
+
+table1_PFAS |>
+  rifttable() |>
+  rt_gt()
+```
+
+
+```{r}
+summary(df_table1_diagnosis$pfoa)
+summary(df_table1_diagnosis$pfos)
+summary(df_table1_diagnosis$pfna)
+```
+
+```{r}
+df_table1_diagnosis <- df_table1_diagnosis |>
+  mutate(dxage65 = factor(case_when(dxage < 65 ~ "<65",
+                                    dxage >= 65 ~ "65+")))
+```
+
+
+## Overall
+
+```{r table 1 overall}
+table1 <- df_table1_diagnosis |>
+  table1_design(pfoa, dxage, age_cat.f,  dxyr_cat.f, nhrace, married.f, insur.f, grade_combo.f, stage.f, mets, txsurg.f, txhorm.f, txrad.f, psa.f, nses_quin, psa_perc, no2_new, pm25_new, ndvi27_final, continuous_type = "mean (sd)")
+
+table1 |>
+  rifttable(risk_digits = 1) |>
+  rt_gt()
+```
+
+
+## PFOA
+```{r table 1 pfoa}
+table1_pfoa <- df_table1_diagnosis |>
+  table1_design(pfoa, dxage, age_cat.f,  dxyr_cat.f, nhrace, married.f, insur.f, grade_combo.f, stage.f, mets, txsurg.f, txhorm.f, txrad.f, psa.f, nses_quin, psa_perc, no2_new, pm25_new, ndvi27_final, by= pfoa_quin, continuous_type = "median (iqr)")
+
+table1_pfoa |>
+  rifttable() |>
+  rt_gt()
+```
+
+## PFOS
+```{r table 1 pfos}
+table1_pfos <- df_table1_diagnosis |>
+  table1_design(pfos, dxage, age_cat.f,  dxyr_cat.f, nhrace, married.f, insur.f, grade_combo.f, stage.f, mets, txsurg.f, txhorm.f, txrad.f, psa.f, nses_quin, psa_perc, no2_new, pm25_new, ndvi27_final, by=pfos_quin, continuous_type = "median (iqr)")
+
+table1_pfos |>
+  rifttable() |>
+  rt_gt()
+```
+
+## PFNA
+```{r table 1 pfna}
+table1_pfna <- df_table1_diagnosis |>
+  table1_design(pfna, dxage, age_cat.f,  dxyr_cat.f, nhrace, married.f, insur.f, grade_combo.f, stage.f, mets, txsurg.f, txhorm.f, txrad.f, psa.f, nses_quin, psa_perc, no2_new, pm25_new, ndvi27_final, by=pfna_cat, continuous_type = "median (iqr)")
+
+table1_pfna |>
+  rifttable() |>
+  rt_gt()
+```
+
+
+# Summary statistics of PFAS
+```{r}
+water_summary_long <- df_table1_diagnosis |>
+  select(c(patient_study_id, pfoa, pfos, pfna)) |>
+   pivot_longer(pfoa:pfna, names_to = "Analyte", values_to = "Value")
+
+water_summary_long$Value <- as.numeric(water_summary_long$Value)
+
+water_summary_long <- water_summary_long |>
+  group_by(Analyte) %>%
+  summarise(
+    N      = n(),
+    min    = min(Value, na.rm = TRUE),
+    q25     = quantile(Value, 0.25, na.rm = TRUE),
+    median = median(Value, na.rm = TRUE),
+    mean   = mean(Value, na.rm = TRUE),
+    sd     = sd(Value, na.rm = TRUE),
+    q75     = quantile(Value, 0.75, na.rm = TRUE),
+    q90    = quantile(Value, 0.9, na.rm = TRUE),
+    max    = max(Value, na.rm = TRUE)
+  ) |>
+  arrange(mean)
+
+knitr::kable(water_summary_long, format="markdown")
+```
