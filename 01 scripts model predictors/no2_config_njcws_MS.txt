@@ -1,0 +1,26 @@
+## YAML Config File for LAN Processing  - Prostate Cancer project
+## Written by: Hari Iyer
+## Date: 11/24/25
+
+## Objective: set up specific config parameters
+
+no2_dir:
+## location of pm25 rasters (it is ndvi_dir because I used NDVI code first)
+- C:/Users/ms3283/Box/Registry Spatial Data Sharing/Georgia/NO2/NO2-Annual-geotiff/
+
+
+## changing to test - Hari
+exp_dir: 
+- C:/Users/ms3283/Box/PFAS Grant/XGBoost/data/Pollution/
+
+
+## These are the names of .csv files containing all NDVI seasonal values for every participant/QQ cycle within a given LS/buffer combo (n=9)
+## This needs to match order in which files are moved
+exp_filename:
+- njpws_no2_joined.Rda
+
+
+
+
+
+
