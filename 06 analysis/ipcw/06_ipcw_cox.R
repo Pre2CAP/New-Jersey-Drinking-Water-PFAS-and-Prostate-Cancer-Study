@@ -89,20 +89,17 @@ print(
 
 pfas_quint <- c(
   "pfoa_quin",
-  "pfos_quin",
-  "pfna_quin"
+  "pfos_quin"
 )
 
 pfas_trend <- c(
   "pfoa_dx_t",
-  "pfos_dx_t",
-  "pfna_dx_t"
+  "pfos_dx_t"
 )
 
 pfas_iqr <- c(
   "pfoa_iqr",
-  "pfos_iqr",
-  "pfna_iqr"
+  "pfos_iqr"
 )
 
 
@@ -113,8 +110,7 @@ pfas_iqr <- c(
 
 pfas_mcl <- c(
   "pfoa_mcl",
-  "pfos_mcl",
-  "pfna_mcl"
+  "pfos_mcl"
 )
 
 long_imp_list <- lapply(
@@ -140,18 +136,6 @@ long_imp_list <- lapply(
             is.na(pfos_dx) ~ NA_character_,
             pfos_dx >= 13 ~ "At or Above MCL",
             pfos_dx < 13 ~ "Below MCL"
-          ),
-          levels = c(
-            "Below MCL",
-            "At or Above MCL"
-          )
-        ),
-        
-        pfna_mcl = factor(
-          case_when(
-            is.na(pfna_dx) ~ NA_character_,
-            pfna_dx >= 13 ~ "At or Above MCL",
-            pfna_dx < 13 ~ "Below MCL"
           ),
           levels = c(
             "Below MCL",
@@ -1279,11 +1263,6 @@ organize_ipcw_results <- function(
           exposure
         ) ~ "PFOS",
         
-        grepl(
-          "^pfna",
-          exposure
-        ) ~ "PFNA",
-        
         TRUE ~ NA_character_
       ),
       
@@ -1291,8 +1270,7 @@ organize_ipcw_results <- function(
         pfas,
         levels = c(
           "PFOA",
-          "PFOS",
-          "PFNA"
+          "PFOS"
         )
       ),
       
